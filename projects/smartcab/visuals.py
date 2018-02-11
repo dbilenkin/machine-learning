@@ -19,7 +19,7 @@ import ast
 
 def calculate_safety(data):
 	""" Calculates the safety rating of the smartcab during testing. """
-
+    
 	good_ratio = data['good_actions'].sum() * 1.0 / \
 	(data['initial_deadline'] - data['final_deadline']).sum()
 
