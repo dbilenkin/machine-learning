@@ -14,28 +14,17 @@ run_data = []
 visited_hrefs = []
 driver = webdriver.Firefox()
 
-def write_to_csv(data):
+def write_to_csv(data, file):
     keys = data.keys()
-    if os.stat("data.csv").st_size == 0:
-        with open('data.csv', 'wb') as output_file:
+    if os.stat(file).st_size == 0:
+        with open(file, 'wb') as output_file:
             dict_writer = csv.DictWriter(output_file, keys)
             dict_writer.writeheader()
             dict_writer.writerow(data)
     else:
-        with open('data.csv', 'a') as output_file:
+        with open(file, 'a') as output_file:
             dict_writer = csv.DictWriter(output_file, keys)
             dict_writer.writerow(data)
-
-def write_visited_users():
-    if os.stat("visited_users.csv").st_size == 0:
-        with open('visited_users.csv','wb') as resultFile:
-            wr = csv.writer(resultFile, dialect='excel')
-            wr.writerow(visited_hrefs)
-    else:
-        with open('visited_users.csv','a') as resultFile:
-            wr = csv.writer(resultFile, dialect='excel')
-            wr.writerows(visited_hrefs)
-
 
 def loop_over_connections(level):
     if (level < 12):
@@ -50,60 +39,99 @@ def loop_over_connections(level):
             user = href.split("profile/",1)[1]
             driver.get(href)
             driver.implicitly_wait(3)
-            driver.switch_to_default_content()
-
             get_data(user, level)
             try:
-                driver.find_element_by_xpath("//div[@class='connections-count']/a").click()
-                driver.implicitly_wait(10)
-                loop_over_connections(next_level) 
+                connections = driver.find_element_by_xpath("//div[@class='connections-count']/a")
+                connection_number = int(connections.text.split()[0])
+                if connection_number < 100:
+                    connections.click()
+                    driver.implicitly_wait(3)
+                    loop_over_connections(next_level) 
             except Exception as e:
                 print e
+                test_garmin_login(visited_hrefs[-1])
 
 def get_my_connections():
-    driver.find_element_by_xpath("//span[contains(text(),'Connections')]").click()
-    driver.implicitly_wait(10)
+    connections = driver.find_element_by_xpath("//span[contains(text(),'Connections')]").click()
+    driver.implicitly_wait(3)
+    loop_over_connections(0)
 
+def start_at_href(href):
+    driver.get(href)
+    driver.implicitly_wait(5)
+    driver.find_element_by_xpath("//div[@class='connections-count']/a").click()
+    driver.implicitly_wait(5)
     loop_over_connections(0) 
 
 def get_data(user, level):
 
+    user_data = OrderedDict()
+    user_data['user'] = user
+    user_data['level'] = level
+
     print "level: ", level
     print "getting data for: ", user
+    marathon = None
+    marathonYear = None
+    half = None
+    halfYear = None
+
+    try:
+        no_share = driver.find_element_by_xpath("//i[contains(@class,'icon-locked')]")
+        user_data['share'] = False
+        write_to_csv(user_data, 'visited_users.csv')
+        return
+    except:
+        pass
 
     try:
         marathon = driver.find_element_by_xpath("//span[text()='Marathon']/following-sibling::span").text
         marathonYear = driver.find_element_by_xpath("//span[text()='Marathon']/following-sibling::span/following-sibling::span").text
         print "marathon time: ", marathon
+    except:
+        pass
+    
+    try:
+        half = driver.find_element_by_xpath("//span[text()='Half Marathon']/following-sibling::span").text
+        halfYear = driver.find_element_by_xpath("//span[text()='Half Marathon']/following-sibling::span/following-sibling::span").text
+        print "half time: ", half
+    except:
+        pass
 
-        fiveK = driver.find_element_by_xpath("//span[contains(text(), '5K')]/following-sibling::span").text
-        fiveKYear = driver.find_element_by_xpath("//span[contains(text(), '5K')]/following-sibling::span/following-sibling::span").text
+    if marathon != None or half != None:
+        try:
+            fiveK = driver.find_element_by_xpath("//span[contains(text(), '5K')]/following-sibling::span").text
+            fiveKYear = driver.find_element_by_xpath("//span[contains(text(), '5K')]/following-sibling::span/following-sibling::span").text
 
-        distance = driver.find_element_by_xpath("//div[@class='tab-content']/div/div/div/div/span[contains(text(), 'Distance')]/preceding-sibling::div").text
-        activities = driver.find_element_by_xpath("//div[@class='tab-content']/div/div/div/div/span[contains(text(), 'Activities')]/preceding-sibling::div").text
-        time = driver.find_element_by_xpath("//div[@class='tab-content']/div/div/div/div/span[contains(text(), 'Time')]/preceding-sibling::div").text
-        elevation = driver.find_element_by_xpath("//div[@class='tab-content']/div/div/div/div/span[contains(text(), 'Elev Gain')]/preceding-sibling::div").text
+            distance = driver.find_element_by_xpath("//div[@class='tab-content']/div/div/div/div/span[contains(text(), 'Distance')]/preceding-sibling::div").text
+            activities = driver.find_element_by_xpath("//div[@class='tab-content']/div/div/div/div/span[contains(text(), 'Activities')]/preceding-sibling::div").text
+            time = driver.find_element_by_xpath("//div[@class='tab-content']/div/div/div/div/span[contains(text(), 'Time')]/preceding-sibling::div").text
+            elevation = driver.find_element_by_xpath("//div[@class='tab-content']/div/div/div/div/span[contains(text(), 'Elev Gain')]/preceding-sibling::div").text
 
-        user_data = OrderedDict()
-        user_data['user'] = user
-        user_data['5K'] = fiveK
-        user_data['5KYear'] = fiveKYear
-        user_data['marathon'] = marathon
-        user_data['marathonYear'] = marathonYear
-        user_data['distance'] = distance
-        user_data['activities'] = activities
-        user_data['time'] = time
-        user_data['elevation'] = elevation
-        user_data['level'] = level
+            
+            user_data['5K'] = fiveK
+            user_data['5KYear'] = fiveKYear
+            user_data['half'] = half
+            user_data['halfYear'] = halfYear
+            user_data['marathon'] = marathon
+            user_data['marathonYear'] = marathonYear
+            user_data['distance'] = distance
+            user_data['activities'] = activities
+            user_data['time'] = time
+            user_data['elevation'] = elevation
+            
 
-        run_data.append(user_data)
-        write_to_csv(user_data)
+            run_data.append(user_data)
+            write_to_csv(user_data, 'data.csv')
 
-    except Exception as e:
-        print e
+        except Exception as e:
+            print e
+    else:
+        user_data['share'] = True
+        write_to_csv(user_data, 'visited_users.csv')
       
 
-def test_garmin_login():
+def test_garmin_login(start_href=None):
     driver.implicitly_wait(10)
     driver.get("https://connect.garmin.com/en-US/signin?service=https://connect.garmin.com/modern/activities")
     
@@ -117,9 +145,11 @@ def test_garmin_login():
     driver.implicitly_wait(10)
     driver.switch_to_default_content()
 
-    get_my_connections()
+    if start_href == None:
+        get_my_connections()
+    else:
+        start_at_href(start_href)
 
-test_garmin_login()
-write_visited_users()
+test_garmin_login("https://connect.garmin.com/modern/profile/JozanneH")
     
 
