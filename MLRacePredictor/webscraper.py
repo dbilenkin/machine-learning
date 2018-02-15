@@ -49,7 +49,7 @@ def loop_over_connections(level):
                     loop_over_connections(next_level) 
             except Exception as e:
                 print e
-                test_garmin_login(visited_hrefs[-1])
+                test_garmin_login(visited_hrefs[-10])
 
 def get_my_connections():
     connections = driver.find_element_by_xpath("//span[contains(text(),'Connections')]").click()
@@ -71,10 +71,20 @@ def get_data(user, level):
 
     print "level: ", level
     print "getting data for: ", user
+
+    # set to None
     marathon = None
     marathonYear = None
     half = None
     halfYear = None
+    fiveK = None
+    fiveKYear = None
+    tenK = None
+    tenKYear = None
+    distance = None
+    activities = None
+    time = None
+    elevation = None
 
     try:
         no_share = driver.find_element_by_xpath("//i[contains(@class,'icon-locked')]")
@@ -102,30 +112,41 @@ def get_data(user, level):
         try:
             fiveK = driver.find_element_by_xpath("//span[contains(text(), '5K')]/following-sibling::span").text
             fiveKYear = driver.find_element_by_xpath("//span[contains(text(), '5K')]/following-sibling::span/following-sibling::span").text
+        except:
+            pass
 
+        try:    
+            tenK = driver.find_element_by_xpath("//span[contains(text(), '10K')]/following-sibling::span").text
+            tenKYear = driver.find_element_by_xpath("//span[contains(text(), '10K')]/following-sibling::span/following-sibling::span").text
+        except:
+            pass
+
+        try:
             distance = driver.find_element_by_xpath("//div[@class='tab-content']/div/div/div/div/span[contains(text(), 'Distance')]/preceding-sibling::div").text
             activities = driver.find_element_by_xpath("//div[@class='tab-content']/div/div/div/div/span[contains(text(), 'Activities')]/preceding-sibling::div").text
             time = driver.find_element_by_xpath("//div[@class='tab-content']/div/div/div/div/span[contains(text(), 'Time')]/preceding-sibling::div").text
             elevation = driver.find_element_by_xpath("//div[@class='tab-content']/div/div/div/div/span[contains(text(), 'Elev Gain')]/preceding-sibling::div").text
 
-            
-            user_data['5K'] = fiveK
-            user_data['5KYear'] = fiveKYear
-            user_data['half'] = half
-            user_data['halfYear'] = halfYear
-            user_data['marathon'] = marathon
-            user_data['marathonYear'] = marathonYear
-            user_data['distance'] = distance
-            user_data['activities'] = activities
-            user_data['time'] = time
-            user_data['elevation'] = elevation
-            
-
-            run_data.append(user_data)
-            write_to_csv(user_data, 'data.csv')
-
         except Exception as e:
             print e
+
+        user_data['5K'] = fiveK
+        user_data['5KYear'] = fiveKYear
+        user_data['10K'] = tenK
+        user_data['10KYear'] = tenKYear
+        user_data['half'] = half
+        user_data['halfYear'] = halfYear
+        user_data['marathon'] = marathon
+        user_data['marathonYear'] = marathonYear
+        user_data['distance'] = distance
+        user_data['activities'] = activities
+        user_data['time'] = time
+        user_data['elevation'] = elevation
+        
+
+        run_data.append(user_data)
+        write_to_csv(user_data, 'data.csv')
+
     else:
         user_data['share'] = True
         write_to_csv(user_data, 'visited_users.csv')
@@ -150,6 +171,14 @@ def test_garmin_login(start_href=None):
     else:
         start_at_href(start_href)
 
-test_garmin_login("https://connect.garmin.com/modern/profile/JozanneH")
+def load_visited_users():
+    reader = csv.DictReader(open('visited_users.csv', 'rb'))
+    for line in reader:
+        visited_href = "https://connect.garmin.com/modern/profile/" + line["user"]
+        visited_hrefs.append(visited_href)
+
+
+load_visited_users()
+test_garmin_login("https://connect.garmin.com/modern/profile/istephane")
     
 
