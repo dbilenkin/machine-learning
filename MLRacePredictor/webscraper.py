@@ -27,7 +27,7 @@ def write_to_csv(data, file):
             dict_writer.writerow(data)
 
 def loop_over_connections(level):
-    if (level < 12):
+    if (level < 15):
         next_level = level + 1
         connections = driver.find_elements_by_xpath("//div[@class='title']/a[@class='colored']")
         hrefs = [c.get_attribute("href") for c in connections]
@@ -179,6 +179,6 @@ def load_visited_users():
 
 
 load_visited_users()
-test_garmin_login("https://connect.garmin.com/modern/profile/dambro00")
+test_garmin_login("https://connect.garmin.com/modern/profile/Krit789")
     
 
