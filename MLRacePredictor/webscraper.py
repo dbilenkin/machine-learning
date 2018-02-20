@@ -38,7 +38,7 @@ def loop_over_connections(level):
             visited_hrefs.append(href)
             user = href.split("profile/",1)[1]
             driver.get(href)
-            driver.implicitly_wait(3)
+            driver.implicitly_wait(2)
             get_data(user, level)
             try:
                 connections = driver.find_element_by_xpath("//div[@class='connections-count']/a")
@@ -93,6 +93,13 @@ def get_data(user, level):
         return
     except:
         pass
+
+    try:
+        personal_records = driver.find_element_by_xpath("//div[contains(@class,'user-stats')]/div[1]/div/h3")
+        if personal_records.text != 'Personal Records':
+            return
+    except:
+        return
 
     try:
         marathon = driver.find_element_by_xpath("//span[text()='Marathon']/following-sibling::span").text
@@ -179,6 +186,6 @@ def load_visited_users():
 
 
 load_visited_users()
-test_garmin_login("https://connect.garmin.com/modern/profile/TOMSMAE")
+test_garmin_login("https://connect.garmin.com/modern/profile/Calisthenics_runner")
     
 
