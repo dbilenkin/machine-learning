@@ -43,7 +43,7 @@ def loop_over_connections(level):
             try:
                 connections = driver.find_element_by_xpath("//div[@class='connections-count']/a")
                 connection_number = int(connections.text.split()[0])
-                if connection_number < 100:
+                if connection_number < 300:
                     connections.click()
                     driver.implicitly_wait(3)
                     loop_over_connections(next_level) 
@@ -186,6 +186,6 @@ def load_visited_users():
 
 
 load_visited_users()
-test_garmin_login("https://connect.garmin.com/modern/profile/Calisthenics_runner")
+test_garmin_login("https://connect.garmin.com/modern/profile/Dan-Pearce")
     
 
