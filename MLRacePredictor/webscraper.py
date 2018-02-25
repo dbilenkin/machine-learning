@@ -186,6 +186,6 @@ def load_visited_users():
 
 
 load_visited_users()
-test_garmin_login("https://connect.garmin.com/modern/profile/Dan-Pearce")
+test_garmin_login("https://connect.garmin.com/modern/profile/MONDRI81")
     
 
