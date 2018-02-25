@@ -23,11 +23,15 @@ T2=T1*(D2/D1)^1.06
 ```
 This was published in Runner's World and the majority of race pace calculators found online are based on some variation of this old formula. If you just google "Race Predictor", the first several sites that show up all use it. The problem with this formula is it's based on data from elite athletes who know how to properly train for different distances. It doesn't take into account any other factors about the athlete, most importantly, their training volume.
 
-By using actual data from the general population of runners that includes features such as training volume and pace, I will be able to create a much more accurate predictor for those of us who are not elite runners.
+I plan to use real data from the general population of runners that includes features such as training volume and pace along with other race PRs. There will be a data preprocessing step where I will remove outliers and other bad data. After that, the data will be split into the training and testing sets. Then I will try out several machine learning algorithms for regression and determine which has the best results using the evaluation metric mentioned later. There may be some fine tuning once a model is chosen to see if tweaking some of the hyper parameters could yield even better results. 
 
 ### Metrics
 
 Because the marathon time predictor is simply trying to predict the time of a target race such as a marathon or half marathon this is a regression problem. I plan to use the coefficient of determination (R^2) and compare the result of the benchmark (Riegel's Formula) versus the algorithm. And, also use it to for feature selection as well as evaluating algorithms.
+
+R^2 is the proportion of the variance in the dependent variable that is predictable from the independent variable(s).<sup>3</sup>. As you can see in the formula below it is calculated by subtracting the sum of squares of residuals (error, or measure of how far off the predicted is from the true values) divided by the total sum of squares which is the variance of the data set from 1. It can range from 0 to 1, where 1 would be perfect predictions with no errors.
+
+![R^2](rsquared.svg)
 
 But, I also want to use something simpler in this case, mean percent off: the percentage the predicted race time is off from the actual result. Because I am looking at how far off it is, I will be taking the absolute value of the difference so there won't be a scenario where the bad guesses average out. Meaning in a prediction of +5% too high and -7% too low, this will average to 6% and not -1%.
 
@@ -61,6 +65,14 @@ Another big challenge was pulling the meaningful data from all of the data gathe
 
 At this point the data was ready to be imported into the Jupyter notebook. I knew there would be further data preprocessing to deal with outliers and other noise in the dataset. I'll discuss the details of that in the data preprocessing section.
 
+The first thing we need to look at once the data is imported is what the ranges of each of the features look like and see if there are any abnormalities. After removing records with empty rows and converting all the times to seconds so we are dealing with numbers I printed the `describe` function of the DataFrame.
+
+![Describe of Initial Data](initial_data_describe.png)
+
+After removing empty rows with data that is either empty or set to 0 we are already down to about half of the rows at 2116. Going through each of the features, it's clear that there is a lot of data that will need to be cleaned up. For example, all the minimum's in every feature are all not realistic data. Every race result has a time that is below a world record. Also for average activity data there are minimums averaging less than 1 mile a month which probably means those running logs did not keep much of there actual running data there and should not be used when training the models. 
+
+But aside from the outliers, the means for each of the features generally align with my expectations. Average 5K time of 21:46 seems a bit low, but makes sense with some of the very low outliers. I imagine this will go up when they are removed. Average monthly miles of previous 3 months and 12 months before a marathon are 101 and 67 respectively which definitely seems right. Other than some bad data, most of it looks good and ready to move to the preprocessing step.
+
 ### Exploratory Visualization
 
 After importing the data and doing some initial cleanup of removing rows with not enough data for running activities and PRs, I wanted to see what the relationships were between all of the features and if it was what I expected.
@@ -87,7 +99,13 @@ Once we move to predicting a marathon, it's clear that the line is way off, and 
 
 Predicting half marathon and marathon times using existing labeled data is clearly a supervised regression problem. I considered several algorithms to solve this problem. Because there are relatively few features, and some of them appear to have linear relationships, I knew it made sense to start with linear regression. 
 
-But, I wasn't completely sure what the relationships were with some of the activity data so I also wanted to try some that weren't completely linear. I also included, Ridge and Lasso. I also wanted to try some ensemble algorithms as I've had good results with them before so I added Gradient Boosting and Ada Boost to the list. Finally, I threw in KNN, even though I wasn't sure this would be a good fit, just because I felt it was quite different from the rest.
+Even though I didn't have too many features I still wanted to try a couple regression algorithms that include regularization. Lasso and Ridge are two regression algorithms that introduce the concept of regularization. This means they penalize the magnitude of coefficients in an effort to minimize overfitting. 
+
+Lasso does this by adding a penalty equivalent to the absolute value of the magnitude of the coefficient, while Ridge adds the penalty of equivalent to the square of the magnitude of coefficients.<sup>4</sup>
+
+I also wanted to try Gradient Boosting as I've had good results with it before. Gradient Boosting is an ensemble algorithm that combines a lot of weak learners (simple decision trees) one at a time and evaluating the result using a loss function. I thought it might be appropriate here because ensemble methods have proven to get superior results in many situations when the features have a more complicated relationship than can be determined by a simple linear regression. I didn't expect it to do better than Linear Regression if I was just using race PRs, but since I was also including activity data, I wanted to see if it could give a better result.
+
+Finally, I threw in K Nearest Neighbors, mostly because it works so differently from the algorithms. It basically just finds the closest neighbors by distance in the data space and returns the average of the label. Again, I wasn't expecting this to be the best, but wasn't sure how it would do, because I didn't know exactly what the data space looked like.
 
 I looped over all of these regressors with their default hyper parameters and I also did this on every subset of combination of features. I wanted to try all the combinations for two reasons. First, I wanted to see which combinations of features were best at predicting results. If it turned out that certain activity data didn't help, there was no need to use it. I didn't want more features than needed. Second, I wanted to be able to give a prediction based on what data a user had available. I wanted to have different trained regressors that would do better depending on what features were used as an input. 
 
@@ -96,6 +114,22 @@ For example if a user only had a 5K time but no half time to predict a marathon,
 ### Benchmark
 
 As mentioned in the problem statement and elsewhere, the clear benchmark that I was trying to improve upon was Riegel's formula. I was able to run the formula to generate predicted half marathon and marathon race times based on shorter races and used these predictions in the chosen evaluation metrics(R^2 and mean percent off) to see how my trained models compared.
+
+When using R^2 as well as average percent off to evaluate the current benchmark of Riegel's formula I get the following results:
+
+Riegel for half based on 5K:
+Average percent off 3.90%
+Coefficient of Determination (R2):  0.859521934604
+
+Riegel for marathon based on 5K:
+Average percent off 10.09%
+Coefficient of Determination (R2):  0.356883579775
+
+Riegel for marathon based on half:
+Average percent off 7.75%
+Coefficient of Determination (R2):  0.609482078262
+
+From this it's clear that using Riegel for predicting a half marathon from a 5K is already not bad. For the marathon, though, there is lots of room for improvement.
 
 ## III. Methodology
 
@@ -111,7 +145,19 @@ After trying a couple different outlier methods like Isolation Forrest, Elliptic
 
 ### Implementation
 
-As mentioned in the Algorithms and Techniques section, I wanted to try several algorithms that I thought could work well given a supervised regression problem with less than a dozen features. I looped over all the algorithms and used the coefficient of determination (R^2) to evaluate which regressor was best. I also wanted to try every subset of combination of features to see which features gave the best results and to create a model that could predict off of any inputs.
+I used python 2.7 in a Jupyter notebook for all of the work once I had all the data. I used the scikit-learn library for all of the data splitting, all of the algorithms and for the R^2 evaluation metric.
+
+numpy was imported for dealing with NaN values, and of course I made use of pandas DataFrames throughout the entire project, as well as pyplot for visualizations.
+
+Because I was dealing with race times I used both datetime and time modules to convert and compare times.
+
+I created a separate DataFrame for half marathon and marathon data that each had their own features specific to them. From here on forward I will describe what was done with one of these datasets, as for each step I generally looped over the two datasets.
+
+Using `train_test_split` I generated the `X_train, y_train, X_test, y_test` data sets to run through my chosen regression algorithms.
+
+As mentioned in the Algorithms and Techniques section, I wanted to try several algorithms that I thought could work well given a supervised regression problem with less than a dozen features. I looped over all the algorithms and used the coefficient of determination (R^2) to evaluate which regressor was best. 
+
+I also wanted to try every subset of combination of features to see which features gave the best results and to create a model that could predict off of any inputs. I imported `combinations` from `itertools` to handle this.
 
 I created a `print_results` function that creates a single DataFrame combining the predicted results with the real results including a column showing the percentage the result was off from the real result. In this function I also calculated the R^2 which was used to determine which model was best. I added a verbose parameter to print even more information including the head of that DataFrame to easily compare how different regressor and feature combinations performed. This was very valuable when comparing results.
 
@@ -119,11 +165,67 @@ Next, I created a `run_regressor` function to run a regressor with every subset 
 
 Finally, I created a `run_lots_o_regressors` function where I looped through the list of regressors I wanted to try and called the `run_regressor` function and kept track of the best overall regressor for predicting a half marathon and marathon.
 
-### Refinement
+Running the `run_lots_o_regressors` function printed out the results of each regressor with the best feature set combination. Here is an example of a couple of them along with the best regressor at the end:
+
+```
+---- Lasso(alpha=1.0, copy_X=True, fit_intercept=True, max_iter=1000,
+   normalize=False, positive=False, precompute=False, random_state=None,
+   selection='cyclic', tol=0.0001, warm_start=False) ----
+best feature combo:  10K|half|marathonTrainDis12|marathonTrainDis3|marathonTrainPaceSec12|marathonTrainDays12
+R2: 0.857
+percent off: 4.94%
+
+---- KNeighborsRegressor(algorithm='auto', leaf_size=30, metric='minkowski',
+          metric_params=None, n_jobs=1, n_neighbors=5, p=2,
+          weights='uniform') ----
+best feature combo:  10K|half|marathonTrainDis3|marathonTrainPaceSec12
+R2: 0.847
+percent off: 5.21%
+
+best overall -----
+best feature combo:  10K|half|marathonTrainDis3
+best reg:  GradientBoostingRegressor(alpha=0.9, criterion='friedman_mse', init=None,
+             learning_rate=0.1, loss='ls', max_depth=3, max_features=None,
+             max_leaf_nodes=None, min_impurity_decrease=0.0,
+             min_impurity_split=None, min_samples_leaf=1,
+             min_samples_split=2, min_weight_fraction_leaf=0.0,
+             n_estimators=100, presort='auto', random_state=None,
+             subsample=1.0, verbose=0, warm_start=False)
+best percent off:  4.66326850913
+best r2:  0.866885237273
+```
 
 Before trying every combination of features, I initially ran regressors using all of them, until it ocurred to me that I should try subsets of features to see if they do better. I also initially didn't get great results because I forgot that I should remove outliers. Then, when I did remove outliers, I removed them by feature, independently of each other. This meant I may be removing those people who ran a very fast or very slow marathon. This is not what I wanted. I didn't want to remove those results. I wanted to remove results where there was a very fast marathon with a very slow 5K. Using Elliptic Envelope helped with this.
 
-I continued to refine results by tweaking the percentages of outliers removed, as well as the training data numbers. I tried fine tuning some of the parameters using grid search, but after trying a few different combinations, none of them yielded better results than the default model. My biggest problem was with the data to begin with, not with tweaking parameters in an algorithm.
+There was a lot of troubleshooting and figuring out what best way to gather all of the data. I am still a novice at python, so lots of these steps took a long time. It took me a  just to understand the differences between DataFrames and Series and just python lists.
+
+After I worked through all of my problems, and got my data in as clean a state as I could, for both the half marathon and marathon model the winning algorithm was Gradient Boosting.
+
+### Refinement
+
+Once it was determined that Gradient Boosting was the best algorithm of the ones I evaluated, I wanted to see if I could tune some of the parameters. There are many to choose from, but from previous experience I wanted to focus on changing the following three: n_estimators, max_depth, learning_rate.
+
+I used `grid_search` to try every combination of 3 values of each of these out to see if they could be improved from the default. The default for each of these parameters respectively is: 100, 3, .1
+
+I decided I would try a bit less and a bit more for all of these to see if they would improve. Here is what I set my parameters to: 
+
+```
+parameters = {'n_estimators': [50, 100, 500],'max_depth':[1,3,5], 'learning_rate':[0.05,0.1,0.2]}
+```
+
+After running grid search using R^2 as the scoring function, I got the following results:
+
+```
+Unoptimized model
+------
+R^2 score on testing data: 0.8681
+
+Optimized Model
+------
+Final R^2 score on the testing data: 0.8608
+```
+
+Frankly, I was surprised none of them yielded better results than the default model. I thought it might be close, but slightly larger and I could explore further. But after seeing this it was clear my biggest problem was with the data to begin with, not with tweaking parameters in an algorithm.
 
 ## IV. Results
 
@@ -271,6 +373,10 @@ If you've gotten to the end of all this, thank you so much for taking the time t
 1. Running USA, June 15, 2017, http://www.runningusa.org/marathon-report-2017
 
 2. Riegel, Peter S. (May–June 1981). "Athletic Records and Human Endurance". American Scientist. 69: 285–290.
+
+3. Coefficient of Determination definition, http://stattrek.com/statistics/dictionary.aspx?definition=coefficient_of_determination
+
+4. A Complete Tutorial on Ridge and Lasso Regression in Python,https://www.analyticsvidhya.com/blog/2016/01/complete-tutorial-ridge-lasso-regression-python/
 
 -----------
 
