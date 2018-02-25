@@ -23,7 +23,11 @@ T2=T1*(D2/D1)^1.06
 ```
 This was published in Runner's World and the majority of race pace calculators found online are based on some variation of this old formula. If you just google "Race Predictor", the first several sites that show up all use it. The problem with this formula is it's based on data from elite athletes who know how to properly train for different distances. It doesn't take into account any other factors about the athlete, most importantly, their training volume.
 
-I plan to use real data from the general population of runners that includes features such as training volume and pace along with other race PRs. There will be a data preprocessing step where I will remove outliers and other bad data. After that, the data will be split into the training and testing sets. Then I will try out several machine learning algorithms for regression and determine which has the best results using the evaluation metric mentioned later. There may be some fine tuning once a model is chosen to see if tweaking some of the hyper parameters could yield even better results. 
+I plan to use real data from the general population of runners that includes features such as training volume and pace along with other race PRs. There will be a data preprocessing step where I will remove outliers and other bad data. After that, the data will be split into the training and testing sets. Then, I will try out several machine learning algorithms for regression and determine which has the best results using the coefficient of determination (R^2) as an evaluation metric which I'll discuss in further detail later. 
+
+Since we are trying to predict a continuous race result, this is a regression problem. I plan to start with Linear Regression, but also try the following algorithms as well, Lasso, Ridge, Gradient Boosting and K Nearest Neighbors. There may be some fine tuning once a model is chosen to see if tweaking some of the hyper parameters could yield even better results. 
+
+Using machine learning, and specifically a supervised regression algorithm to predict race times will work a lot better than using a single simple formula that clearly does not account for the many variables that go into a goal race.
 
 ### Metrics
 
@@ -72,6 +76,12 @@ The first thing we need to look at once the data is imported is what the ranges 
 After removing empty rows with data that is either empty or set to 0 we are already down to about half of the rows at 2116. Going through each of the features, it's clear that there is a lot of data that will need to be cleaned up. For example, all the minimum's in every feature are all not realistic data. Every race result has a time that is below a world record. Also for average activity data there are minimums averaging less than 1 mile a month which probably means those running logs did not keep much of there actual running data there and should not be used when training the models. 
 
 But aside from the outliers, the means for each of the features generally align with my expectations. Average 5K time of 21:46 seems a bit low, but makes sense with some of the very low outliers. I imagine this will go up when they are removed. Average monthly miles of previous 3 months and 12 months before a marathon are 101 and 67 respectively which definitely seems right. Other than some bad data, most of it looks good and ready to move to the preprocessing step.
+
+Aside from the overview of the data, here is a sample from the head of the DataFrame:
+
+![Initial SampleData](initial_sample_data.png)
+
+This sample really illustrates the problem I'm dealing with when it comes to lack of data.  Of these 10 random rows, 6 of them will be thrown out immediately because they have no activity data. Of the 4 remaining, index #4137 will be thrown out because the average monthly training distance is way too low and indicative of someone not keeping all their activity in their running log. That means, of these 10, only 3 will make it into the training and testing of the model.
 
 ### Exploratory Visualization
 
